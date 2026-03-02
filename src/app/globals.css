@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+@keyframes fu { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes prog { from { width: 5%; } to { width: 92%; } }
+.fu { animation: fu .3s ease both; }
+.f1 { animation: fu .3s .07s ease both; }
+.f2 { animation: fu .3s .14s ease both; }
+.f3 { animation: fu .3s .21s ease both; }
