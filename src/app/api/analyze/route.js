@@ -84,10 +84,11 @@ export async function POST(req) {
       }
     }
 
-    // Step 4: Attach forensic data to response
+    // Step 4: Attach forensic data + token usage to response
+    const usage = data.usage || null;
     return NextResponse.json({
       ...parsed,
-      forensics: forensicData,
+      forensics: forensicData ? { ...forensicData, usage } : { usage },
     });
   } catch (e) {
     return NextResponse.json({ error: e.message || "Ошибка анализа" }, { status: 500 });
