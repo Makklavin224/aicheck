@@ -7,10 +7,16 @@ import {
   buildForensicContext,
 } from "@/lib/forensics";
 
-// Fix invalid \uXXXX sequences that Claude sometimes produces in JSON text
-// e.g. "\учёт" or "\url" — \u followed by non-hex chars breaks JSON.parse
-function sanitizeJsonUnicode(str) {
-  return str.replace(/\\u(?![0-9a-fA-F]{4})/g, "\\\\u");
+// Fix ALL invalid JSON escape sequences that Claude sometimes produces.
+// Valid JSON escapes: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX (4 hex digits).
+// Anything else (\a, \x, \u with <4 hex, \U, \0, etc.) is invalid.
+function sanitizeJsonEscapes(str) {
+  // Fix \uXXXX with <4 hex digits (e.g. \unit, \url, \u041)
+  // Also fix \U (uppercase) which is not valid JSON
+  let result = str.replace(/\\[uU](?![0-9a-fA-F]{4})/g, "\\\\u");
+  // Fix any other invalid escape: \X where X is not a valid JSON escape char
+  result = result.replace(/\\(?!["\\/bfnrtuU]|u[0-9a-fA-F]{4})/g, "\\\\");
+  return result;
 }
 
 export async function POST(req) {
@@ -79,12 +85,14 @@ export async function POST(req) {
         .replace(/```json\s*/g, "")
         .replace(/```\s*/g, "")
         .trim();
-      parsed = JSON.parse(sanitizeJsonUnicode(cleaned));
+      parsed = JSON.parse(sanitizeJsonEscapes(cleaned));
     } catch (parseErr) {
+      console.error("JSON parse error:", parseErr.message);
+      console.error("Raw response (first 500):", txt.substring(0, 500));
       // Try to extract JSON from mixed content
       const jsonMatch = txt.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        parsed = JSON.parse(sanitizeJsonUnicode(jsonMatch[0]));
+        parsed = JSON.parse(sanitizeJsonEscapes(jsonMatch[0]));
       } else {
         throw new Error("AI вернул невалидный JSON: " + txt.substring(0, 200));
       }
