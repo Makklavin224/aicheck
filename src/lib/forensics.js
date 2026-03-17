@@ -245,7 +245,25 @@ function extractPdfField(raw, fieldName) {
   // Match /FieldName (value) or /FieldName <hex>
   const parenRegex = new RegExp(`/${fieldName}\\s*\\(([^)]{0,200})\\)`, "i");
   const match = raw.match(parenRegex);
-  if (match) return decodePdfString(match[1]);
+  if (match) {
+    let val = match[1];
+    // Detect UTF-16BE BOM (FE FF) — Word/Office encode metadata as UTF-16BE
+    if (val.charCodeAt(0) === 0xFE && val.charCodeAt(1) === 0xFF) {
+      try {
+        const bytes = Buffer.from(val, "latin1");
+        // Swap bytes: UTF-16BE → UTF-16LE (Node has no native utf16be)
+        for (let i = 2; i < bytes.length - 1; i += 2) {
+          const tmp = bytes[i];
+          bytes[i] = bytes[i + 1];
+          bytes[i + 1] = tmp;
+        }
+        return bytes.toString("utf16le", 2).replace(/\0/g, "").trim();
+      } catch {
+        return val.replace(/[\0\xFE\xFF]/g, "").trim();
+      }
+    }
+    return decodePdfString(val);
+  }
 
   // Try hex string
   const hexRegex = new RegExp(`/${fieldName}\\s*<([0-9a-fA-F]+)>`, "i");
